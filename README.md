@@ -1,12 +1,3 @@
-# BosonUSB
-Tool to capture Boson USB video in Linux 
-
-###############################################################
-###  FLIR SYSTEMS, INC
-###  andres.prieto-moreno@flir.com
-###  2017-May
-###
-
 ------------
 Description:
 ------------
