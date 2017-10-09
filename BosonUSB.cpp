@@ -8,19 +8,19 @@
 -------------------------------------------------------------
 
  BosonUSB [r/y/z/s/f] [0..9]
-	r    : raw14 bits video input (default)
+	r    : raw16 bits video input (default)
 	y    : agc-8 bits video input
-	z    : zoom mode to 640x480 (only applies to raw14 input)
+	z    : zoom mode to 640x480 (only applies to raw16 input)
         f<name> : record TIFFS in Folder <NAME>
 	s[b,B]  : camera size : b=boson320, B=boson640
 	[0..9]  : linux video port
 
-./BosonUSB   ->  opens Boson320 /dev/video0  in RAW14 mode
-./BosonUSB r ->  opens Boson320 /dev/video0  in RAW14 mode
+./BosonUSB   ->  opens Boson320 /dev/video0  in RAW16 mode
+./BosonUSB r ->  opens Boson320 /dev/video0  in RAW16 mode
 ./BosonUSB y ->  opens Boson320 /dev/video0  in AGC-8bits mode
-./BosonUSB sB 1    ->  opens Boson640 /dev/video1  in RAW14 mode
+./BosonUSB sB 1    ->  opens Boson640 /dev/video1  in RAW16 mode
 ./BosonUSB sB y 2  ->  opens Boson640 /dev/video2  in AGC-8bits mode
-./BosonUSB fcap -> creates a folder named 'cap' and inside TIFF files (raw14, agc, yuv) will be located. 
+./BosonUSB fcap -> creates a folder named 'cap' and inside TIFF files (raw16, agc, yuv) will be located. 
 
 */
 
@@ -37,7 +37,7 @@
 
 
 #define YUV   0
-#define RAW14 1
+#define RAW16 1
 
 using namespace cv;
 
@@ -65,7 +65,7 @@ enum sensor_types {
 };
 
 
-/* ---------------------------- 14 bits Mode auxiliary functions ---------------------------------------*/
+/* ---------------------------- 16 bits Mode auxiliary functions ---------------------------------------*/
 
 // AGC Sample ONE: Linear from min to max.
 // Input is a MATRIX (height x width) of 16bits. (OpenCV mat)
@@ -116,7 +116,7 @@ void AGC_Basic_Linear(Mat input_16, Mat output_8, int height, int width) {
 void print_help() {
 	printf(CYN "Boson Capture and Record Video tool v%i.%i" WHT "\n", v_major, v_minor);
 	printf(CYN "FLIR Systems" WHT "\n\n");
-	printf(WHT "use : " YEL "'BosonUSB r' " WHT "to capture in raw-14 bits mode   (default)\n");
+	printf(WHT "use : " YEL "'BosonUSB r' " WHT "to capture in raw-16 bits mode   (default)\n");
 	printf(WHT "Use : " YEL "'BosonUSB y' " WHT "to capture in agc-8  bits mode\n");
   	printf(WHT "Use : " YEL "'BosonUSB z' " WHT "Zoom to 640x512 (only in RAW) mode  (default ZOOM OFF)\n");
 	printf(WHT "Use : " YEL "'BosonUSB f<name>' " WHT "record TIFFS in Folder <NAME>\n");
@@ -141,7 +141,7 @@ int main(int argc, char** argv )
 	char filename[60];  // PATH/File_count
 	char folder_name[30];  // To store the folder name
 	// Default Program options
-	int  video_mode=RAW14;
+	int  video_mode=RAW16;
 	int  zoom_enable=0;
 	int  record_enable=0;
 	sensor_types my_thermal=Boson320;
@@ -159,9 +159,9 @@ int main(int argc, char** argv )
 
 	// Read command line arguments
 	for (i=0; i<argc; i++) {
-		// Check if RAW14 video is desired
+		// Check if RAW16 video is desired
 		if ( argv[i][0]=='r') {
-			video_mode=RAW14;
+			video_mode=RAW16;
 		}
 		// Check if AGC video is desired
 		if ( argv[i][0]=='y') {
@@ -217,7 +217,7 @@ int main(int argc, char** argv )
 		exit(1);
 	}
 
-	// Check VideoCapture mode is avaiolable
+	// Check VideoCapture mode is available
 	if(ioctl(fd, VIDIOC_QUERYCAP, &cap) < 0){
 	    perror(RED "ERROR : VIDIOC_QUERYCAP. Video Capture is not available" WHT "\n");
 	    exit(1);
@@ -230,13 +230,14 @@ int main(int argc, char** argv )
 
 	struct v4l2_format format;
 
-	// Two different FORMAT modes, 8 bits vs RAW14
-	if (video_mode==RAW14) {
-		printf(WHT ">>> " YEL "14 bits " WHT "capture selected\n");
+	// Two different FORMAT modes, 8 bits vs RAW16
+	if (video_mode==RAW16) {
+		printf(WHT ">>> " YEL "16 bits " WHT "capture selected\n");
 
-		// I am requiring thermal 14 bits mode
+		// I am requiring thermal 16 bits mode
 		format.fmt.pix.pixelformat = V4L2_PIX_FMT_Y16;
 
+		// Select the frame SIZE (will depend on the type of sensor)
 		switch (my_thermal) {
 			case Boson320:  // Boson320
 			          	width=320;
@@ -327,16 +328,16 @@ int main(int argc, char** argv )
 	}
 
 
-	// Declarations for RAW14 representation
+	// Declarations for RAW16 representation
+        // Will be used in case we are reading RAW16 format
 	// Boson320 , Boson 640
-	Mat thermal14(height, width, CV_16U, buffer_start);   // Asking for all info: two bytes per pixel (RAW14)  RAW14 mode`
-	Mat thermal14_linear(height,width, CV_8U, 1);         // Final representation
-	Mat thermal14_flir_agc(height,width, CV_8U, 1);       // Final representation
+	Mat thermal16(height, width, CV_16U, buffer_start);   // OpenCV input buffer  : Asking for all info: two bytes per pixel (RAW16)  RAW16 mode`
+	Mat thermal16_linear(height,width, CV_8U, 1);         // OpenCV output buffer : Data used to display the video
 
 	// Declarations for Zoom representation
+    	// Will be used or not depending on program arguments
 	Size size(640,512);
-	Mat thermal14_linear_zoom;   // (height,width, CV_8U, 1);    // Final representation
-//    Mat thermal14_flir_agc_zoom; // (height,width, CV_8U, 1);    // Final representation
+	Mat thermal16_linear_zoom;   // (height,width, CV_8U, 1);    // Final representation
 	Mat thermal_rgb_zoom;   // (height,width, CV_8U, 1);    // Final representation
 
 	int luma_height ;
@@ -344,12 +345,13 @@ int main(int argc, char** argv )
 	int color_space ;;
 
 	// Declarations for 8bits YCbCr mode
+        // Will be used in case we are reading YUV format
 	// Boson320, 640 :  4:2:0
 	luma_height = height+height/2;
 	luma_width = width;
 	color_space = CV_8UC1;
- 	Mat thermal_luma(luma_height, luma_width,  color_space, buffer_start);  // New matrix fill of ones
-	Mat thermal_rgb(height, width, CV_8UC3, 1);    // BGR -> Three color spaces (640 - 640 - 640 : p11 p21 p31 .... / p12 p22 p32 ..../ p13 p23 p33 ...)
+ 	Mat thermal_luma(luma_height, luma_width,  color_space, buffer_start);  // OpenCV input buffer
+	Mat thermal_rgb(height, width, CV_8UC3, 1);    // OpenCV output buffer , BGR -> Three color spaces (640 - 640 - 640 : p11 p21 p31 .... / p12 p22 p32 ..../ p13 p23 p33 ...)
 
 	// Reaad frame, do AGC, paint frame
 	for (;;) {
@@ -368,26 +370,26 @@ int main(int argc, char** argv )
 
 
 		// -----------------------------
-		// RAW14 DATA
-		if ( video_mode==RAW14 ) {
-			AGC_Basic_Linear(thermal14, thermal14_linear, height, width);
+		// RAW16 DATA
+		if ( video_mode==RAW16 ) {
+			AGC_Basic_Linear(thermal16, thermal16_linear, height, width);
 
-			// Display thermal after 14-bits AGC... will display an image
+			// Display thermal after 16-bits AGC... will display an image
 			if (zoom_enable==0) {
-                		sprintf(label, "%s : RAW14  Linear", thermal_sensor_name);
-                    		imshow(label, thermal14_linear);
+                		sprintf(label, "%s : RAW16  Linear", thermal_sensor_name);
+                    		imshow(label, thermal16_linear);
           		} else {
-			        resize(thermal14_linear, thermal14_linear_zoom, size);
-                     		sprintf(label, "%s : RAW14  Linear Zoom", thermal_sensor_name);
-                     		imshow(label, thermal14_linear_zoom);
+			        resize(thermal16_linear, thermal16_linear_zoom, size);
+                     		sprintf(label, "%s : RAW16  Linear Zoom", thermal_sensor_name);
+                     		imshow(label, thermal16_linear_zoom);
                 	}
 
           	
 	        	if (record_enable==1) {
-        	        	sprintf(filename, "%s_raw14_%lu.tiff", thermal_sensor_name, frame);
-                		imwrite(filename, thermal14 , compression_params );
+        	        	sprintf(filename, "%s_raw16_%lu.tiff", thermal_sensor_name, frame);
+                		imwrite(filename, thermal16 , compression_params );
                         	sprintf(filename, "%s_agc_%lu.tiff", thermal_sensor_name, frame);
-                        	imwrite(filename, thermal14_linear , compression_params );
+                        	imwrite(filename, thermal16_linear , compression_params );
 				frame++;
                 	}
           	}
