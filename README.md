@@ -39,11 +39,13 @@ To compile
 ----------
 
 This SW uses some libraries as v4l2 and OpenCv, they need to be installed first in the PC.
-They are not part of this package
+They are not part of this package.
 
+Running cmake to create the build system in the current directory.
 `
 cmake .
 `
+Building the code using the generated Makefile:
 `
 make
 `
