@@ -15,7 +15,7 @@ To Display Boson data we are using OpenCV to convert from YUV to RGB.
 --------------
 How to use it:
 --------------
-
+```
 BosonUSB [r/y/a/b/z/f] [0..9]
 	r    : raw video
 	y    : 8 bits
@@ -33,7 +33,7 @@ BosonUSB [r/y/a/b/z/f] [0..9]
 		   If in RAW16 mode then RAW16 and Linear_AGC are captured per frame
 		   If in AGC-8 mode then YUV TIFF only are captured per frame
 
-
+```
 ----------
 To compile
 ----------
@@ -42,13 +42,10 @@ This SW uses some libraries as v4l2 and OpenCv, they need to be installed first 
 They are not part of this package.
 
 Running cmake to create the build system in the current directory.
-`
+```
 cmake .
-`
-Building the code using the generated Makefile:
-`
 make
-`
+```
 
 (if CMakeCache.txt exists remove it first time)
 
@@ -56,9 +53,10 @@ make
 -----------------------------
 How to clean the full project
 -----------------------------
-
+```
 make clean
 rm -rf CMakeFiles
 rm CMakeCache.txt
 rm cmake_install.cmake
 rm Makefile
+```
