@@ -41,8 +41,12 @@ To compile
 This SW uses some libraries as v4l2 and OpenCv, they need to be installed first in the PC.
 They are not part of this package
 
-`cmake .`
-`make`
+`
+cmake .
+`
+`
+make
+`
 
 (if CMakeCache.txt exists remove it first time)
 
