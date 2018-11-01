@@ -148,7 +148,7 @@ int main(int argc, char** argv )
 
 	// To record images
 	std::vector<int> compression_params;
-	compression_params.push_back(IMWRITE_PXM_BINARY);
+	compression_params.push_back(CV_IMWRITE_PXM_BINARY);
 
 	// Display Help
 	print_help();
