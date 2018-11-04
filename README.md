@@ -1,5 +1,5 @@
-<small>FLIR SYSTEMS, INC<br></small>
-<small>2017-May</small>
+FLIR SYSTEMS, INC
+2018-Nov
 
 # Description:
 
