@@ -1,11 +1,14 @@
 /*
--------------------------------------------------------------
--  FLIR Systems - Linux Boson  Capture & Recording          -
--------------------------------------------------------------
-- Andres Prieto-Moreno                                      -
--------------------------------------------------------------
-- Thanks to: https://jwhsmith.net/2014/12/capturing-a-webcam-stream-using-v4l2/
--------------------------------------------------------------
+------------------------------------------------------------------------
+-  FLIR Systems - Linux Boson  Capture & Recording                     -
+------------------------------------------------------------------------
+-  This code is using part of the explanations from this page          -
+-  https://jwhsmith.net/2014/12/capturing-a-webcam-stream-using-v4l2/  -
+-                                                                      -
+-  and completed to be used with FLIR Boson cameras in 16 and 8 bits.  -
+-  Internal AGC for 16bits mode is very basic, with just the intention -
+-  of showing how to make that image displayable                       - 
+------------------------------------------------------------------------
 
  BosonUSB [r/y/z/s/f] [0..9]
 	r    : raw16 bits video input (default)
