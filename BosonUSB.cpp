@@ -20,7 +20,7 @@
 ./BosonUSB y ->  opens Boson320 /dev/video0  in AGC-8bits mode
 ./BosonUSB sB 1    ->  opens Boson640 /dev/video1  in RAW16 mode
 ./BosonUSB sB y 2  ->  opens Boson640 /dev/video2  in AGC-8bits mode
-./BosonUSB fcap -> creates a folder named 'cap' and inside TIFF files (raw16, agc, yuv) will be located. 
+./BosonUSB fcap -> creates a folder named 'cap' and inside TIFF files (raw16, agc, yuv) will be located.
 
 */
 
@@ -148,7 +148,7 @@ int main(int argc, char** argv )
 
 	// To record images
 	std::vector<int> compression_params;
-	compression_params.push_back(CV_IMWRITE_PXM_BINARY);
+	compression_params.push_back(IMWRITE_PXM_BINARY);
 
 	// Display Help
 	print_help();
@@ -384,7 +384,7 @@ int main(int argc, char** argv )
                      		imshow(label, thermal16_linear_zoom);
                 	}
 
-          	
+
 	        	if (record_enable==1) {
         	        	sprintf(filename, "%s_raw16_%lu.tiff", thermal_sensor_name, frame);
                 		imwrite(filename, thermal16 , compression_params );
@@ -402,7 +402,7 @@ int main(int argc, char** argv )
 
         		sprintf(label, "%s : 8bits", thermal_sensor_name);
 		        imshow(label, thermal_rgb);
-	        	
+
 			if (record_enable==1) {
                         	sprintf(filename, "%s_yuv_%lu.tiff", thermal_sensor_name, frame);
                         	imwrite(filename, thermal_rgb , compression_params );
@@ -428,4 +428,3 @@ int main(int argc, char** argv )
 	close(fd);
 	return EXIT_SUCCESS;
 }
-
