@@ -1,5 +1,6 @@
-FLIR SYSTEMS, INC
-2018-Nov
+FLIR SYSTEMS, INC <BR>
+2018-Nov <BR>
+MIT License <BR>
 
 # Description:
 
