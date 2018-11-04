@@ -16,7 +16,7 @@ Video is 8 bits is directly paintable, linear transformation happens inside the
 To Display Boson data we are using OpenCV to convert from YUV to RGB.
 
 # How to use it:
-
+```
 BosonUSB [r/y/a/b/z/f] [0..9]
 	r    : raw video
 	y    : 8 bits
@@ -33,24 +33,27 @@ BosonUSB [r/y/a/b/z/f] [0..9]
 ./BosonUSB fcap -> Captures RAW16 frames and stores them as TIFF files in 'cap' folder.
 		   If in RAW16 mode then RAW16 and Linear_AGC are captured per frame
 		   If in AGC-8 mode then YUV TIFF only are captured per frame
+```
 
 # To compile
 
 This SW uses some libraries as v4l2 and OpenCv, they need to be installed first in the PC.
 They are not part of this package
-
+```
 cmake .
 make
 
 (if CMakeCache.txt exists remove it first time)
+```
 
 # How to clean the full project
-
+```
 make clean
 rm -rf CMakeFiles
 rm CMakeCache.txt
 rm cmake_install.cmake
 rm Makefile
+```
 
 # References and Credits (other than FLIR)
 
