@@ -427,7 +427,7 @@ int main(int argc, char** argv )
 			break;
 		}
 		// Stop if frame limit reached.
-		if (video_frames>0 && frame > video_frames) {
+		if (video_frames>0 && frame+1 > video_frames) {
 			printf(WHT ">>>" RED "'Done'" WHT " Frame limit reached, Quitting !\n");
 			break;
 		}
