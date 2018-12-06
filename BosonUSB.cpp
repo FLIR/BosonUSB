@@ -199,9 +199,12 @@ int main(int argc, char** argv )
 			sprintf(video, "/dev/video%c",argv[i][0]);
 		}
 		// Look for frame count
-		if (argv[i][0]>'9') {
-			video_frames=argv[i][0];
-		}
+        if ( argv[i][0]=='t') {
+            if ( strlen(argv[i])>=2 ) {
+                video_frames = std::stoi( argv[i]+1 );
+
+            }
+        }
 
   	}
 
