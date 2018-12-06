@@ -205,7 +205,6 @@ int main(int argc, char** argv )
 
             }
         }
-
   	}
 
 	// Folder name
@@ -430,6 +429,7 @@ int main(int argc, char** argv )
 		// Stop if frame limit reached.
 		if (video_frames>0 && frame > video_frames) {
 			printf(WHT ">>>" RED "'Done'" WHT " Frame limit reached, Quitting !\n");
+			break;
 		}
 	}
 	// Finish Loop . Exiting.
