@@ -145,6 +145,7 @@ int main(int argc, char** argv )
 	char folder_name[30];  // To store the folder name
 	// Default Program options
 	int  video_mode=RAW16;
+	int  video_frames=0;
 	int  zoom_enable=0;
 	int  record_enable=0;
 	sensor_types my_thermal=Boson320;
@@ -197,7 +198,13 @@ int main(int argc, char** argv )
 		if (argv[i][0]>='0' && argv[i][0]<='9') {
 			sprintf(video, "/dev/video%c",argv[i][0]);
 		}
+		// Look for frame count
+        if ( argv[i][0]=='t') {
+            if ( strlen(argv[i])>=2 ) {
+                video_frames = std::stoi( argv[i]+1 );
 
+            }
+        }
   	}
 
 	// Folder name
@@ -417,6 +424,11 @@ int main(int argc, char** argv )
 		// Press 'q' to exit
 		if( waitKey(1) == 'q' ) { // 0x20 (SPACE) ; need a small delay !! we use this to also add an exit option
 			printf(WHT ">>> " RED "'q'" WHT " key pressed. Quitting !\n");
+			break;
+		}
+		// Stop if frame limit reached.
+		if (video_frames>0 && frame+1 > video_frames) {
+			printf(WHT ">>>" RED "'Done'" WHT " Frame limit reached, Quitting !\n");
 			break;
 		}
 	}

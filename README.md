@@ -18,11 +18,12 @@ To Display Boson data we are using OpenCV to convert from YUV to RGB.
 
 # How to use it:
 ```
-BosonUSB [r/y/a/b/z/f] [0..9]
+BosonUSB [r/y/a/b/z/f/t] [0..9] 
 	r    : raw video
 	y    : 8 bits
 	z    : zoom mode to 640x480
 	f<name>    : record TIFFS in Folder <NAME>
+	t<video_frames> : record a certain number of frames being <video_frames> default sets to 0 which sets no limit
 	s[b,B] : b=boson320, B=boson640   
 	[0..9]: video port
 
@@ -34,6 +35,7 @@ BosonUSB [r/y/a/b/z/f] [0..9]
 ./BosonUSB fcap -> Captures RAW16 frames and stores them as TIFF files in 'cap' folder.
 		   If in RAW16 mode then RAW16 and Linear_AGC are captured per frame
 		   If in AGC-8 mode then YUV TIFF only are captured per frame
+./BosonUSB fcap t100 -> Captures RAW16 frames and stores them as TIFF files in 'cap' folder and only captures 100 frames
 ```
 
 # To compile
