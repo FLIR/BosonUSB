@@ -10,11 +10,12 @@
 -  of showing how to make that image displayable                       - 
 ------------------------------------------------------------------------
 
- BosonUSB [r/y/z/s/f] [0..9]
+ BosonUSB [r/y/z/s/t/f] [0..9]
 	r    : raw16 bits video input (default)
 	y    : agc-8 bits video input
 	z    : zoom mode to 640x480 (only applies to raw16 input)
         f<name> : record TIFFS in Folder <NAME>
+        t<number> : number of frames to record
 	s[b,B]  : camera size : b=boson320, B=boson640
 	[0..9]  : linux video port
 
@@ -144,6 +145,7 @@ int main(int argc, char** argv )
 	char thermal_sensor_name[20];  // To store the sensor name
 	char filename[60];  // PATH/File_count
 	char folder_name[30];  // To store the folder name
+        char video_frames_str[30];
 	// Default Program options
 	int  video_mode=RAW16;
 	int  video_frames=0;
@@ -200,12 +202,13 @@ int main(int argc, char** argv )
 			sprintf(video, "/dev/video%c",argv[i][0]);
 		}
 		// Look for frame count
-        if ( argv[i][0]=='t') {
-            if ( strlen(argv[i])>=2 ) {
-                video_frames = std::stoi( argv[i]+1 );
-
-            }
-        }
+        	if ( argv[i][0]=='t') {
+            		if ( strlen(argv[i])>=2 ) {
+				strcpy(video_frames_str, argv[i]+1);
+                                video_frames = atoi( video_frames_str );
+                                printf(WHT ">>> Number of frames to record =" YEL "%i" WHT "\n", video_frames);
+            		}	
+        	}
   	}
 
 	// Folder name
