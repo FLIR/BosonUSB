@@ -1,3 +1,0 @@
-/home/ziad/CLionProjects/BosonUSBN/cmake-build-debug/CMakeFiles/rebuild_cache.dir
-/home/ziad/CLionProjects/BosonUSBN/cmake-build-debug/CMakeFiles/BosonUSB.dir
-/home/ziad/CLionProjects/BosonUSBN/cmake-build-debug/CMakeFiles/edit_cache.dir
