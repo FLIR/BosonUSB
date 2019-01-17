@@ -123,9 +123,10 @@ void print_help() {
 	printf(WHT "Use : " YEL "'BosonUSB y' " WHT "to capture in agc-8  bits mode\n");
   	printf(WHT "Use : " YEL "'BosonUSB z' " WHT "Zoom to 640x512 (only in RAW) mode  (default ZOOM OFF)\n");
 	printf(WHT "Use : " YEL "'BosonUSB f<name>' " WHT "record TIFFS in Folder <NAME>\n");
+	printf(WHT "Use : " YEL "'BosonUSB f<name> t<frame_count>' " WHT "record TIFFS in Folder <NAME> and stop recording after <FRAME_COUNT> frames\n");
 	printf(WHT "Use : " YEL "'BosonUSB [0..9]'   " WHT "to open /dev/Video[0..9]  (default 0)\n");
 	printf(WHT "Use : " YEL "'BosonUSB s[b,B]'   " WHT "b=boson320, B=boson640   (default 320)\n");
-	printf(WHT "Press " YEL "'q' " WHT " to quit\n");
+	printf(WHT "Press " YEL "'q' in video window " WHT " to quit\n");
 	printf("\n");
 }
 
@@ -428,7 +429,7 @@ int main(int argc, char** argv )
 		}
 		// Stop if frame limit reached.
 		if (video_frames>0 && frame+1 > video_frames) {
-			printf(WHT ">>>" RED "'Done'" WHT " Frame limit reached, Quitting !\n");
+			printf(WHT ">>>" GRN "'Done'" WHT " Frame limit reached, Quitting !\n");
 			break;
 		}
 	}
