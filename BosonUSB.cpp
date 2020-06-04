@@ -412,7 +412,7 @@ int main(int argc, char** argv )
 		// ---------------------------------
 		// DATA in YUV
 		else {  // Video is in 8 bits YUV
-            		cvtColor(thermal_luma, thermal_rgb, COLOR_YUV2RGB_I420, 0 );   // 4:2:0 family instead of 4:2:2 ...
+            		cvtColor(thermal_luma, thermal_rgb, COLOR_YUV2BGR_I420, 0 );   // 4:2:0 family instead of 4:2:2 ...
 
         		sprintf(label, "%s : 8bits", thermal_sensor_name);
 		        imshow(label, thermal_rgb);
