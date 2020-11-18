@@ -58,6 +58,8 @@ using namespace cv;
 #define WHT   "\x1B[37m"
 #define RESET "\x1B[0m"
 
+// Need to clean video for linux structs to avoid some random initializations problems (not always present)
+#define CLEAR(x) memset(&(x), 0, sizeof(x))
 
 // Global variables to keep this simple
 int width;
@@ -243,6 +245,8 @@ int main(int argc, char** argv )
 	}
 
 	struct v4l2_format format;
+	
+	CLEAR(format);
 
 	// Two different FORMAT modes, 8 bits vs RAW16
 	if (video_mode==RAW16) {
