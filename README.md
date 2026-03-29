@@ -32,8 +32,8 @@ BosonUSB [r/y/a/b/z/f/t] [0..9]
 ./BosonUSB 1    ->  opens /dev/video1  in RAW16 mode
 ./BosonUSB y 2  ->  opens B/dev/video2  in AGC-8bits mode
 ./BosonUSB fcap -> Captures RAW16 frames and stores them as TIFF files in 'cap' folder.
-		   If in RAW16 mode RAW16 and Linear_AGC are captured per frame
-		   If in AGC-8 mode YUV TIFF only are captured per frame
+		   		   If in RAW16 mode RAW16 and Linear_AGC are captured per frame
+		           If in AGC-8 mode YUV TIFF only are captured per frame
 ./BosonUSB fcap t100 -> Captures RAW16 frames and stores them as TIFF / AGC files in 'cap' folder and only captures 100 frames
 ```
 
