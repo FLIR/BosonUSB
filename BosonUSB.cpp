@@ -10,21 +10,22 @@
 -  of showing how to make that image displayable                       - 
 ------------------------------------------------------------------------
 
- BosonUSB [r/y/z/s/t/f] [0..9]
+ BosonUSB [r/y/z/t/f] [0..9]
 	r    : raw16 bits video input (default)
 	y    : agc-8 bits video input
 	z    : zoom mode to 640x480 (only applies to raw16 input)
         f<name> : record TIFFS in Folder <NAME>
         t<number> : number of frames to record
-	s[b,B]  : camera size : b=boson320, B=boson640
 	[0..9]  : linux video port
 
-./BosonUSB   ->  opens Boson320 /dev/video0  in RAW16 mode
-./BosonUSB r ->  opens Boson320 /dev/video0  in RAW16 mode
-./BosonUSB y ->  opens Boson320 /dev/video0  in AGC-8bits mode
-./BosonUSB sB 1    ->  opens Boson640 /dev/video1  in RAW16 mode
-./BosonUSB sB y 2  ->  opens Boson640 /dev/video2  in AGC-8bits mode
-./BosonUSB fcap -> creates a folder named 'cap' and inside TIFF files (raw16, agc, yuv) will be located.
+Boson 640 or 320 is auto-detected by the video driver 
+
+./BosonUSB     ->  opens /dev/video0  in RAW16 mode
+./BosonUSB r   ->  opens /dev/video0  in RAW16 mode
+./BosonUSB y   ->  opens /dev/video0  in AGC-8bits mode
+./BosonUSB 1   ->  opens /dev/video1  in RAW16 mode
+./BosonUSB y 2 ->  opens /dev/video2  in AGC-8bits mode
+./BosonUSB fcap -> creates a folder named 'cap' with TIFF files (raw16, agc, yuv)
 
 */
 
@@ -46,7 +47,7 @@
 using namespace cv;
 
 #define v_major 1
-#define v_minor 0
+#define v_minor 1
 
 // Define COLOR CODES
 #define RED   "\x1B[31m"
@@ -64,13 +65,6 @@ using namespace cv;
 // Global variables to keep this simple
 int width;
 int height;
-
-// Types of sensors supported
-enum sensor_types {
-  Boson320, 
-  Boson640
-};
-
 
 /* ------------- Functions to swap bytes (high - low ) in case platform needs it --------------- */
 
@@ -146,8 +140,7 @@ void print_help() {
   	printf(WHT "Use : " YEL "'BosonUSB z' " WHT "Zoom to 640x512 (only in RAW) mode  (default ZOOM OFF)\n");
 	printf(WHT "Use : " YEL "'BosonUSB f<name>' " WHT "record TIFFS in Folder <NAME>\n");
 	printf(WHT "Use : " YEL "'BosonUSB f<name> t<frame_count>' " WHT "record TIFFS in Folder <NAME> and stop recording after <FRAME_COUNT> frames\n");
-	printf(WHT "Use : " YEL "'BosonUSB [0..9]'   " WHT "to open /dev/Video[0..9]  (default 0)\n");
-	printf(WHT "Use : " YEL "'BosonUSB s[b,B]'   " WHT "b=boson320, B=boson640   (default 320)\n");
+	printf(WHT "      " YEL " Boson size is auto detected\n");
 	printf(WHT "Press " YEL "'q' in video window " WHT " to quit\n");
 	printf("\n");
 }
@@ -163,8 +156,8 @@ int main(int argc, char** argv )
 	long frame=0;     // First frame number enumeration
 
 	char video[20];   // To store Video Port Device
-	char label[50];   // To display the information
-	char thermal_sensor_name[20];  // To store the sensor name
+	char label[100];   // To display the information
+	char thermal_sensor_size[20];  // To store the sensor size
 	char filename[128];  // PATH/File_count
 	char folder_name[30] = {0};  // To store the folder name
     char video_frames_str[30] = {};
@@ -174,7 +167,6 @@ int main(int argc, char** argv )
 	int  video_frames=0;
 	int  zoom_enable=0;
 	int  record_enable=0;
-	sensor_types my_thermal=Boson320;
 
 	// To record images
 	std::vector<int> compression_params;
@@ -185,7 +177,6 @@ int main(int argc, char** argv )
 
 	// Video device by default
 	snprintf(video, sizeof(video), "/dev/video0");
-    snprintf(thermal_sensor_name, sizeof(thermal_sensor_name), "Boson_320");
 
 	// Read command line arguments
 	for (i=1; i<argc; i++) {
@@ -208,19 +199,6 @@ int main(int argc, char** argv )
 				strcpy(folder_name, argv[i]+1);
 			}
       	}
-		// Look for type/size of sensor
-		if ( argv[i][0]=='s') {
-			switch ( argv[i][1] ) {
-				case 'B'/* value */:
-					my_thermal=Boson640;
-					sprintf(thermal_sensor_name, "Boson_640");
-					break;
-				default:
-					my_thermal=Boson320;
-					sprintf(thermal_sensor_name, "Boson_320");
-					break;
-        	}
-      	}
 		// Look for feedback in ASCII
 		if (argv[i][0]>='0' && argv[i][0]<='9') {
 			sprintf(video, "/dev/video%c",argv[i][0]);
@@ -238,15 +216,12 @@ int main(int argc, char** argv )
 	// Folder name
 	if (record_enable==1) {
 		if ( strlen(folder_name)<=1 ) {  // File name has to be more than two chars
-		    strcpy(folder_name, thermal_sensor_name);
+		    strcpy(folder_name, "captures");
 		}
 	    mkdir(folder_name, 0700);
 	    chdir(folder_name);
         printf(WHT ">>> Folder " YEL "%s" WHT " selected to record files\n", folder_name);
   	}
-
-	// Printf Sensor defined
-	printf(WHT ">>> " YEL "%s" WHT " selected\n", thermal_sensor_name);
 
 	// We open the Video Device
 	printf(WHT ">>> " YEL "%s" WHT " selected\n", video);
@@ -276,38 +251,36 @@ int main(int argc, char** argv )
 	// Two different FORMAT modes, 8 bits vs RAW16
 	if (video_mode==RAW16) {
 		printf(WHT ">>> " YEL "16 bits " WHT "capture selected\n");
-
-		// I am requiring thermal 16 bits mode
-		format.fmt.pix.pixelformat = V4L2_PIX_FMT_Y16;
-
-		// Select the frame SIZE (will depend on the type of sensor)
-		switch (my_thermal) {
-			case Boson320:  // Boson320
-			    width=320;
-				height=256;
-				break;
-		    case Boson640:  // Boson640
-			    width=640;
-			    height=512;
-			    break;
-			default:  // Boson320
-			    width=320;
-			    height=256;
-			    break;
-		}
-
+		format.fmt.pix.pixelformat = V4L2_PIX_FMT_Y16; 		// I am requiring thermal 16 bits mode
 	} else { // 8- bits is always 640x512 (even for a Boson 320)
 		 printf(WHT ">>> " YEL "8 bits " WHT "YUV selected\n");
 	     format.fmt.pix.pixelformat = V4L2_PIX_FMT_YVU420; // thermal, works LUMA, full Cr, full Cb
-		 width = 640;
-		 height = 512;
 	}
 
-	// Common varibles
+	// Common variables
 	format.type = V4L2_BUF_TYPE_VIDEO_CAPTURE;
-	format.fmt.pix.width = width;
-	format.fmt.pix.height = height;
+	
+	if (ioctl(fd, VIDIOC_S_FMT, &format) < 0) {
+ 		perror(RED "VIDIOC_S_FMT" WHT);
+    	exit(1);
+	}
+
+	width  = format.fmt.pix.width;
+	height = format.fmt.pix.height;
    
+	// Look for type/size of sensor
+	if (width == 640) {
+		strncpy(thermal_sensor_size, "640x512", sizeof(thermal_sensor_size));
+	} else if (width == 320) {
+		strncpy(thermal_sensor_size, "320x256", sizeof(thermal_sensor_size));
+	} else {
+		fprintf(stderr, RED "Sensor size is not 640 not 320" WHT "\n");
+		exit(1);
+	}
+	
+	// Printf Sensor defined
+	printf(WHT ">>> " YEL "Camera" WHT " found\n");
+
     printf(WHT ">>> Pixelformat  = " YEL);
     print_fourcc(format.fmt.pix.pixelformat);
     printf(WHT "\n");
@@ -363,7 +336,7 @@ int main(int argc, char** argv )
 	// properties are also passed
 	printf(WHT ">>> Image width  =" YEL "%i" WHT "\n", width);
 	printf(WHT ">>> Image height =" YEL "%i" WHT "\n", height);
-	printf(WHT ">>> Buffer lenght=" YEL "%i" WHT "\n", bufferinfo.length);
+	printf(WHT ">>> Buffer length=" YEL "%i" WHT "\n", bufferinfo.length);
 
 	void * buffer_start = mmap(NULL, bufferinfo.length, PROT_READ | PROT_WRITE,MAP_SHARED, fd, bufferinfo.m.offset);
 
@@ -381,7 +354,6 @@ int main(int argc, char** argv )
 		perror(RED "VIDIOC_STREAMON" WHT);
 		exit(1);
 	}
-
 
 	// Common Mats
 	Size size(640, 512);
@@ -401,10 +373,10 @@ int main(int argc, char** argv )
 	    thermal16_linear_zoom = Mat();
 	} else {
 	    thermal_yuv = Mat(height + height / 2, width, CV_8UC1, buffer_start);
-	    thermal_rgb = Mat(height, width, CV_8UC3);
+		thermal_rgb = Mat(height, width, CV_8UC3);
 	}
 
-	// Reaad frame, do AGC, paint frame
+	// Read frame, do AGC, paint frame
 	for (;;) {
 
 		// Put the buffer in the incoming queue.
@@ -427,18 +399,18 @@ int main(int argc, char** argv )
 
 			// Display thermal after 16-bits AGC... will display an image
 			if (zoom_enable==0) {
-                sprintf(label, "%s : RAW16  Linear", thermal_sensor_name);
+                sprintf(label, "RAW16 (%s) Linear", thermal_sensor_size);
                 imshow(label, thermal16_linear);
           	} else {
 			    resize(thermal16_linear, thermal16_linear_zoom, size);
-              	sprintf(label, "%s : RAW16  Linear Zoom", thermal_sensor_name);
+              	sprintf(label, "RAW16 (%s) - Linear Zoom", thermal_sensor_size);
               	imshow(label, thermal16_linear_zoom);
             }
 
 	        if (record_enable==1) {
-      	        sprintf(filename, "%s_raw16_%lu.tiff", thermal_sensor_name, frame);
+      	        sprintf(filename, "boson_%s_raw16_%lu.tiff", thermal_sensor_size, frame);
                	imwrite(filename, thermal16 , compression_params );
-                sprintf(filename, "%s_agc_%lu.tiff", thermal_sensor_name, frame);
+                sprintf(filename, "boson_%s_agc_%lu.tiff", thermal_sensor_size, frame);
                 imwrite(filename, thermal16_linear , compression_params );
 				frame++;
             }
@@ -457,11 +429,11 @@ int main(int argc, char** argv )
 				cvtColor(thermal_yuv, thermal_rgb, COLOR_YUV2BGR_YV12);
 			}
 
-			sprintf(label, "%s : 8bits", thermal_sensor_name);
+			sprintf(label, "AGC 8bits (%s)", thermal_sensor_size);
 			imshow(label, thermal_rgb);
 
 			if (record_enable==1) {
-				sprintf(filename, "%s_yuv_%lu.tiff", thermal_sensor_name, frame);
+				sprintf(filename, "boson_%s_yuv_%lu.tiff", thermal_sensor_size, frame);
 				imwrite(filename, thermal_rgb);
 				frame++;
 			}
