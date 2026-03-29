@@ -67,54 +67,73 @@ int height;
 
 // Types of sensors supported
 enum sensor_types {
-  Boson320, Boson640
+  Boson320, 
+  Boson640
 };
 
+
+/* ------------- Functions to swap bytes (high - low ) in case platform needs it --------------- */
+
+static inline uint16_t swap_u16(uint16_t v) {
+    return static_cast<uint16_t>((v >> 8) | (v << 8));
+}
+
+static void print_fourcc(__u32 fmt) {
+    printf("%c%c%c%c",
+           fmt & 0xFF,
+           (fmt >> 8) & 0xFF,
+           (fmt >> 16) & 0xFF,
+           (fmt >> 24) & 0xFF);
+}
 
 /* ---------------------------- 16 bits Mode auxiliary functions ---------------------------------------*/
 
 // AGC Sample ONE: Linear from min to max.
 // Input is a MATRIX (height x width) of 16bits. (OpenCV mat)
 // Output is a MATRIX (height x width) of 8 bits (OpenCV mat)
-void AGC_Basic_Linear(Mat input_16, Mat output_8, int height, int width) {
-	int i, j;  // aux variables
+void AGC_Basic_Linear(const cv::Mat& input_16, cv::Mat& output_8, int h, int w) {
+    uint16_t min1 = 0xFFFF;
+    uint16_t max1 = 0x0000;
 
-	// auxiliary variables for AGC calcultion
-	unsigned int max1=0;         // 16 bits
-	unsigned int min1=0xFFFF;    // 16 bits
-	unsigned int value1, value2, value3, value4;
+    for (int i = 0; i < h; i++) {
+        const uint16_t* row = input_16.ptr<uint16_t>(i);
+        for (int j = 0; j < w; j++) {
+            uint16_t v = row[j];
+            if (v < min1) min1 = v;
+            if (v > max1) max1 = v;
+        }
+    }
 
-	// RUN a super basic AGC
-	for (i=0; i<height; i++) {
-		for (j=0; j<width; j++) {
-			value1 =  input_16.at<uchar>(i,j*2+1) & 0XFF ;  // High Byte
-			value2 =  input_16.at<uchar>(i,j*2) & 0xFF  ;    // Low Byte
-			value3 = ( value1 << 8) + value2;
-			if ( value3 <= min1 ) {
-				min1 = value3;
-			}
-			if ( value3 >= max1 ) {
-				max1 = value3;
-			}
-			//printf("%X.%X.%X  ", value1, value2, value3);
-		}
-	}
-	//printf("max1=%04X, min1=%04X\n", max1, min1);
+    if (max1 <= min1) {
+        output_8.setTo(0);
+        return;
+    }
 
-	for (int i=0; i<height; i++) {
-		for (int j=0; j<width; j++) {
-			value1 =  input_16.at<uchar>(i,j*2+1) & 0XFF ;  // High Byte
-			value2 =  input_16.at<uchar>(i,j*2) & 0xFF  ;    // Low Byte
-			value3 = ( value1 << 8) + value2;
-			value4 = ( ( 255 * ( value3 - min1) ) ) / (max1-min1)   ;
-			// printf("%04X \n", value4);
+    for (int i = 0; i < h; i++) {
+        const uint16_t* in_row = input_16.ptr<uint16_t>(i);
+        uint8_t* out_row = output_8.ptr<uint8_t>(i);
 
-			output_8.at<uchar>(i,j)= (uchar)(value4&0xFF);
-		}
-	}
-
+        for (int j = 0; j < w; j++) {
+            uint16_t v = in_row[j];
+            uint32_t scaled = (255u * (v - min1)) / (max1 - min1);
+            out_row[j] = static_cast<uint8_t>(scaled);
+        }
+    }
 }
 
+// This is in case image 16 bits is swapped 
+void byteswap_image_16(const cv::Mat& src16, cv::Mat& dst16) {
+    CV_Assert(src16.type() == CV_16UC1);
+    dst16.create(src16.rows, src16.cols, CV_16UC1);
+
+    for (int i = 0; i < src16.rows; ++i) {
+        const uint16_t* s = src16.ptr<uint16_t>(i);
+        uint16_t* d = dst16.ptr<uint16_t>(i);
+        for (int j = 0; j < src16.cols; ++j) {
+            d[j] = swap_u16(s[j]);
+        }
+    }
+}
 
 /* ---------------------------- Other Aux functions ---------------------------------------*/
 
@@ -142,12 +161,14 @@ int main(int argc, char** argv )
 	int i;
 	struct v4l2_capability cap;
 	long frame=0;     // First frame number enumeration
+
 	char video[20];   // To store Video Port Device
 	char label[50];   // To display the information
 	char thermal_sensor_name[20];  // To store the sensor name
-	char filename[60];  // PATH/File_count
-	char folder_name[30];  // To store the folder name
-        char video_frames_str[30];
+	char filename[128];  // PATH/File_count
+	char folder_name[30] = {0};  // To store the folder name
+    char video_frames_str[30] = {};
+
 	// Default Program options
 	int  video_mode=RAW16;
 	int  video_frames=0;
@@ -163,11 +184,11 @@ int main(int argc, char** argv )
 	print_help();
 
 	// Video device by default
-	sprintf(video, "/dev/video0");
-	sprintf(thermal_sensor_name, "Boson_320");
+	snprintf(video, sizeof(video), "/dev/video0");
+    snprintf(thermal_sensor_name, sizeof(thermal_sensor_name), "Boson_320");
 
 	// Read command line arguments
-	for (i=0; i<argc; i++) {
+	for (i=1; i<argc; i++) {
 		// Check if RAW16 video is desired
 		if ( argv[i][0]=='r') {
 			video_mode=RAW16;
@@ -179,48 +200,49 @@ int main(int argc, char** argv )
 		// Check if ZOOM to 640x512 is enabled
 		if ( argv[i][0]=='z') {
         		zoom_enable=1;
-      		}
+      	}
 		// Check if recording is enabled
 		if ( argv[i][0]=='f') {  // File name has to be more than two chars
-            		record_enable=1;
-            		if ( strlen(argv[i])>2 ) {
-                		strcpy(folder_name, argv[i]+1);
-            		}
-      		}
+			record_enable=1;
+			if ( strlen(argv[i])>2 ) {
+				strcpy(folder_name, argv[i]+1);
+			}
+      	}
 		// Look for type/size of sensor
 		if ( argv[i][0]=='s') {
-          		switch ( argv[i][1] ) {
-            			case 'B'/* value */:
-                			my_thermal=Boson640;
-               				sprintf(thermal_sensor_name, "Boson_640");
-		        	        break;
-            			default:
-				        my_thermal=Boson320;
-				        sprintf(thermal_sensor_name, "Boson_320");
-          		}
-      		}
+			switch ( argv[i][1] ) {
+				case 'B'/* value */:
+					my_thermal=Boson640;
+					sprintf(thermal_sensor_name, "Boson_640");
+					break;
+				default:
+					my_thermal=Boson320;
+					sprintf(thermal_sensor_name, "Boson_320");
+					break;
+        	}
+      	}
 		// Look for feedback in ASCII
 		if (argv[i][0]>='0' && argv[i][0]<='9') {
 			sprintf(video, "/dev/video%c",argv[i][0]);
 		}
 		// Look for frame count
-        	if ( argv[i][0]=='t') {
-            		if ( strlen(argv[i])>=2 ) {
-				strcpy(video_frames_str, argv[i]+1);
-                                video_frames = atoi( video_frames_str );
-                                printf(WHT ">>> Number of frames to record =" YEL "%i" WHT "\n", video_frames);
-            		}	
-        	}
+		if ( argv[i][0]=='t') {
+			if ( strlen(argv[i])>=2 ) {
+			strcpy(video_frames_str, argv[i]+1);
+				video_frames = atoi( video_frames_str );
+				printf(WHT ">>> Number of frames to record =" YEL "%i" WHT "\n", video_frames);
+			}	
+		}
   	}
 
 	// Folder name
 	if (record_enable==1) {
 		if ( strlen(folder_name)<=1 ) {  // File name has to be more than two chars
-		        strcpy(folder_name, thermal_sensor_name);
-	        }
-	        mkdir(folder_name, 0700);
-	        chdir(folder_name);
-                printf(WHT ">>> Folder " YEL "%s" WHT " selected to record files\n", folder_name);
+		    strcpy(folder_name, thermal_sensor_name);
+		}
+	    mkdir(folder_name, 0700);
+	    chdir(folder_name);
+        printf(WHT ">>> Folder " YEL "%s" WHT " selected to record files\n", folder_name);
   	}
 
 	// Printf Sensor defined
@@ -234,6 +256,7 @@ int main(int argc, char** argv )
 	}
 
 	// Check VideoCapture mode is available
+	CLEAR(cap);
 	if(ioctl(fd, VIDIOC_QUERYCAP, &cap) < 0){
 	    perror(RED "ERROR : VIDIOC_QUERYCAP. Video Capture is not available" WHT "\n");
 	    exit(1);
@@ -248,6 +271,8 @@ int main(int argc, char** argv )
 	
 	CLEAR(format);
 
+	format.type = V4L2_BUF_TYPE_VIDEO_CAPTURE;
+
 	// Two different FORMAT modes, 8 bits vs RAW16
 	if (video_mode==RAW16) {
 		printf(WHT ">>> " YEL "16 bits " WHT "capture selected\n");
@@ -258,22 +283,22 @@ int main(int argc, char** argv )
 		// Select the frame SIZE (will depend on the type of sensor)
 		switch (my_thermal) {
 			case Boson320:  // Boson320
-			          	width=320;
-				        height=256;
-				        break;
-		        case Boson640:  // Boson640
-				        width=640;
-				        height=512;
-				        break;
+			    width=320;
+				height=256;
+				break;
+		    case Boson640:  // Boson640
+			    width=640;
+			    height=512;
+			    break;
 			default:  // Boson320
-				        width=320;
-				        height=256;
-				        break;
-		 }
+			    width=320;
+			    height=256;
+			    break;
+		}
 
 	} else { // 8- bits is always 640x512 (even for a Boson 320)
 		 printf(WHT ">>> " YEL "8 bits " WHT "YUV selected\n");
-	         format.fmt.pix.pixelformat = V4L2_PIX_FMT_YVU420; // thermal, works   LUMA, full Cr, full Cb
+	     format.fmt.pix.pixelformat = V4L2_PIX_FMT_YVU420; // thermal, works LUMA, full Cr, full Cb
 		 width = 640;
 		 height = 512;
 	}
@@ -282,11 +307,22 @@ int main(int argc, char** argv )
 	format.type = V4L2_BUF_TYPE_VIDEO_CAPTURE;
 	format.fmt.pix.width = width;
 	format.fmt.pix.height = height;
+   
+    printf(WHT ">>> Pixelformat  = " YEL);
+    print_fourcc(format.fmt.pix.pixelformat);
+    printf(WHT "\n");
 
-	// request desired FORMAT
-	if(ioctl(fd, VIDIOC_S_FMT, &format) < 0){
-		perror(RED "VIDIOC_S_FMT" WHT);
-		exit(1);
+	bool is_i420 = (format.fmt.pix.pixelformat == V4L2_PIX_FMT_YUV420);  // YU12
+	bool is_yv12 = (format.fmt.pix.pixelformat == V4L2_PIX_FMT_YVU420);  // YV12
+
+	if (video_mode == RAW16 && format.fmt.pix.pixelformat != V4L2_PIX_FMT_Y16) {
+    	fprintf(stderr, RED "ERROR: driver did not negotiate Y16 in RAW16 mode\n" WHT);
+    	exit(1);
+	}
+
+	if (video_mode == YUV && !is_i420 && !is_yv12) {
+	    fprintf(stderr, RED "ERROR: driver did not negotiate a supported 8-bit 4:2:0 format\n" WHT);
+	    exit(1);
 	}
 
 	// we need to inform the device about buffers to use.
@@ -295,6 +331,7 @@ int main(int argc, char** argv )
 	// All this information is sent using the VIDIOC_REQBUFS call and a
 	// v4l2_requestbuffers structure:
 	struct v4l2_requestbuffers bufrequest;
+	CLEAR(bufrequest);
 	bufrequest.type = V4L2_BUF_TYPE_VIDEO_CAPTURE;
 	bufrequest.memory = V4L2_MEMORY_MMAP;
 	bufrequest.count = 1;   // we are asking for one buffer
@@ -346,30 +383,26 @@ int main(int argc, char** argv )
 	}
 
 
-	// Declarations for RAW16 representation
-        // Will be used in case we are reading RAW16 format
-	// Boson320 , Boson 640
-	Mat thermal16(height, width, CV_16U, buffer_start);   // OpenCV input buffer  : Asking for all info: two bytes per pixel (RAW16)  RAW16 mode`
-	Mat thermal16_linear(height,width, CV_8U, 1);         // OpenCV output buffer : Data used to display the video
+	// Common Mats
+	Size size(640, 512);
 
-	// Declarations for Zoom representation
-    	// Will be used or not depending on program arguments
-	Size size(640,512);
-	Mat thermal16_linear_zoom;   // (height,width, CV_8U, 1);    // Final representation
-	Mat thermal_rgb_zoom;   // (height,width, CV_8U, 1);    // Final representation
+	// RAW16 Mats (only valid in RAW16 mode)
+	Mat thermal16;
+	Mat thermal16_linear;
+	Mat thermal16_linear_zoom;
 
-	int luma_height ;
-	int luma_width ;
-	int color_space ;;
+	// YUV Mats (only valid in YUV mode)
+	Mat thermal_yuv;
+	Mat thermal_rgb;
 
-	// Declarations for 8bits YCbCr mode
-        // Will be used in case we are reading YUV format
-	// Boson320, 640 :  4:2:0
-	luma_height = height+height/2;
-	luma_width = width;
-	color_space = CV_8UC1;
- 	Mat thermal_luma(luma_height, luma_width,  color_space, buffer_start);  // OpenCV input buffer
-	Mat thermal_rgb(height, width, CV_8UC3, 1);    // OpenCV output buffer , BGR -> Three color spaces (640 - 640 - 640 : p11 p21 p31 .... / p12 p22 p32 ..../ p13 p23 p33 ...)
+	if (video_mode == RAW16) {
+	    thermal16 = Mat(height, width, CV_16UC1, buffer_start, format.fmt.pix.bytesperline);
+	    thermal16_linear = Mat(height, width, CV_8UC1);
+	    thermal16_linear_zoom = Mat();
+	} else {
+	    thermal_yuv = Mat(height + height / 2, width, CV_8UC1, buffer_start);
+	    thermal_rgb = Mat(height, width, CV_8UC3);
+	}
 
 	// Reaad frame, do AGC, paint frame
 	for (;;) {
@@ -394,38 +427,44 @@ int main(int argc, char** argv )
 
 			// Display thermal after 16-bits AGC... will display an image
 			if (zoom_enable==0) {
-                		sprintf(label, "%s : RAW16  Linear", thermal_sensor_name);
-                    		imshow(label, thermal16_linear);
-          		} else {
-			        resize(thermal16_linear, thermal16_linear_zoom, size);
-                     		sprintf(label, "%s : RAW16  Linear Zoom", thermal_sensor_name);
-                     		imshow(label, thermal16_linear_zoom);
-                	}
+                sprintf(label, "%s : RAW16  Linear", thermal_sensor_name);
+                imshow(label, thermal16_linear);
+          	} else {
+			    resize(thermal16_linear, thermal16_linear_zoom, size);
+              	sprintf(label, "%s : RAW16  Linear Zoom", thermal_sensor_name);
+              	imshow(label, thermal16_linear_zoom);
+            }
 
-
-	        	if (record_enable==1) {
-        	        	sprintf(filename, "%s_raw16_%lu.tiff", thermal_sensor_name, frame);
-                		imwrite(filename, thermal16 , compression_params );
-                        	sprintf(filename, "%s_agc_%lu.tiff", thermal_sensor_name, frame);
-                        	imwrite(filename, thermal16_linear , compression_params );
+	        if (record_enable==1) {
+      	        sprintf(filename, "%s_raw16_%lu.tiff", thermal_sensor_name, frame);
+               	imwrite(filename, thermal16 , compression_params );
+                sprintf(filename, "%s_agc_%lu.tiff", thermal_sensor_name, frame);
+                imwrite(filename, thermal16_linear , compression_params );
 				frame++;
-                	}
-          	}
+            }
+      	}
 
 
 		// ---------------------------------
 		// DATA in YUV
 		else {  // Video is in 8 bits YUV
-            		cvtColor(thermal_luma, thermal_rgb, COLOR_YUV2BGR_I420, 0 );   // 4:2:0 family instead of 4:2:2 ...
+            
+			if (format.fmt.pix.pixelformat == V4L2_PIX_FMT_YUV420) {
+				// YU12 / I420
+				cvtColor(thermal_yuv, thermal_rgb, COLOR_YUV2BGR_I420);
+			} else if (format.fmt.pix.pixelformat == V4L2_PIX_FMT_YVU420) {
+				// YV12
+				cvtColor(thermal_yuv, thermal_rgb, COLOR_YUV2BGR_YV12);
+			}
 
-        		sprintf(label, "%s : 8bits", thermal_sensor_name);
-		        imshow(label, thermal_rgb);
+			sprintf(label, "%s : 8bits", thermal_sensor_name);
+			imshow(label, thermal_rgb);
 
 			if (record_enable==1) {
-                        	sprintf(filename, "%s_yuv_%lu.tiff", thermal_sensor_name, frame);
-                        	imwrite(filename, thermal_rgb , compression_params );
+				sprintf(filename, "%s_yuv_%lu.tiff", thermal_sensor_name, frame);
+				imwrite(filename, thermal_rgb);
 				frame++;
-                	}
+			}
 
 		}
 
