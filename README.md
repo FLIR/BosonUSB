@@ -31,7 +31,7 @@ Boson size is autodetected
 ./BosonUSB r    ->  opens /dev/video0 in RAW16 mode
 ./BosonUSB y    ->  opens /dev/video0 in AGC-8bits mode
 ./BosonUSB 1    ->  opens /dev/video1 in RAW16 mode
-./BosonUSB y 2  ->  opens B/dev/video2 in AGC-8bits mode
+./BosonUSB y 2  ->  opens /dev/video2 in AGC-8bits mode
 ./BosonUSB fcap -> Captures RAW16 frames and stores them as TIFF files in 'cap' folder.
 		   		   If in RAW16 mode RAW16 and Linear_AGC are captured per frame
 		           If in AGC-8 mode YUV TIFF only are captured per frame
