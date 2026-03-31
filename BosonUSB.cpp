@@ -387,7 +387,7 @@ int main(int argc, char** argv )
 
 		// The buffer's waiting in the outgoing queue.
 		if(ioctl(fd, VIDIOC_DQBUF, &bufferinfo) < 0) {
-			perror(RED "VIDIOC_QBUF" WHT);
+			perror(RED "VIDIOC_DQBUF" WHT);
 			exit(1);
 		}
 
