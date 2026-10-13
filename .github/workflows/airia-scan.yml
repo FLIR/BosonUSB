@@ -1,0 +1,17 @@
+name: Airia Code Scanner
+
+on:
+  push:
+    branches: [main, master]
+  pull_request:
+  workflow_dispatch:
+  repository_dispatch:
+    types: [airia-scan-requested]
+
+permissions:
+  contents: read
+
+jobs:
+  scan:
+    uses: TeledyneDevOps/airia-shared-workflows/.github/workflows/airia-scan-reusable.yml@v1
+    secrets: inherit
